@@ -15,15 +15,9 @@ use std::collections::HashMap;
 /// let val = store.get("key".to_owned());
 /// assert_eq!(val, Some("value".to_owned()));
 /// ```
+#[derive(Default)]
 pub struct KvStore {
     store: HashMap<String, String>,
-}
-
-impl Default for KvStore {
-    /// Creates a `KvStore`.
-    fn default() -> Self {
-        Self::new()
-    }
 }
 
 impl KvStore {
