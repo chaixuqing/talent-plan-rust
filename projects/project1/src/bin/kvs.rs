@@ -1,7 +1,8 @@
 use clap::{crate_version, App, Arg, SubCommand};
-use std::process::exit;
+use kvs::{KvError, KvStore, Result};
+use std::{env::current_dir};
 
-fn main() {
+fn main() -> Result<()> {
     let matches = App::new("kvs")
         .version(crate_version!())
         .author("CARGO_PKG_AUTHORS ")
@@ -23,25 +24,40 @@ fn main() {
                 .arg(Arg::with_name("key").help("key").required(true)),
         )
         .get_matches();
+    let mut store = KvStore::open(current_dir().unwrap()).unwrap();
     match matches.subcommand() {
-        ("get", Some(_matches)) => {
-            eprintln!("unimplemented");
-            exit(1);
+        ("get", Some(matches)) => {
+            let key = matches.value_of("key").unwrap();
+            match store.get(key.to_owned())? {
+                Some(value) => println!("{}", value),
+                None => println!("Key not found"),
+            }
+            Ok(())
         }
-        ("set", Some(_matches)) => {
-            // if matches.is_present("key") && matches.is_present("value") {
-            //     println!("{}", matches.value_of("key").unwrap());
-            //     println!("{}", matches.value_of("value").unwrap());
-            // }
-            eprintln!("unimplemented");
-            exit(1);
+        ("set", Some(matches)) => {
+            let key = matches.value_of("key").unwrap();
+            let val = matches.value_of("value").unwrap();
+            store.set(key.to_owned(), val.to_owned()).unwrap();
+            Ok(())
         }
-        ("rm", Some(_matches)) => {
-            // if matches.is_present("key") {
-            //     println!("{}", matches.value_of("key").unwrap());
-            // }
-            eprintln!("unimplemented");
-            exit(1);
+        ("rm", Some(matches)) => {
+            let key = matches.value_of("key");
+            match key {
+                Some(s) => {
+                    match store.remove(s.to_owned()) {
+                        Ok(()) => {Ok(())},
+                        Err(KvError::KeyNotFound) => {
+                            println!("{}", KvError::KeyNotFound);
+                            Err(KvError::KeyNotFound)
+                        }
+                        Err(e) => return Err(e),
+                    }
+                }
+                None => {
+                    println!("Key not found");
+                    Err(KvError::KeyNotFound)
+                }
+            }
         }
         _ => unreachable!(),
     }
