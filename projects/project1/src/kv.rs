@@ -2,10 +2,10 @@
 //! A simple key/value store.
 
 use super::error::Result;
-use crate::{KvError};
+use crate::KvError;
 use serde::{Deserialize, Serialize};
 use std::{
-    collections::{HashMap},
+    collections::HashMap,
     fs,
     io::{self, Read, Seek, SeekFrom, Write},
     path::PathBuf,
@@ -55,11 +55,13 @@ impl KvStore {
         let write_buffer = io::BufWriter::new(file);
         let read_buffer = io::BufReader::new(fs::File::open(path.join(WAL_FILENAME))?);
 
-        Ok(KvStore {
+        let mut kv_store = KvStore {
             write_buffer,
             read_buffer,
             log_pointer_index: HashMap::new(),
-        })
+        };
+        kv_store.load_data()?;
+        Ok(kv_store)
     }
 
     fn load_data(&mut self) -> Result<()> {
@@ -90,7 +92,6 @@ impl KvStore {
     ///
     /// Returns `None` if the given key does not exist.
     pub fn get(&mut self, key: String) -> Result<Option<String>> {
-        self.load_data()?;
         match self.log_pointer_index.get(&key) {
             Some(log_pointer) => {
                 self.read_buffer.seek(SeekFrom::Start(log_pointer.offset))?;
@@ -108,19 +109,25 @@ impl KvStore {
     ///
     /// If the key already exists, the previous value will be overwritten.
     pub fn set(&mut self, key: String, value: String) -> Result<()> {
-        let cmd = Command::Set { key, value };
+        let cmd = Command::Set {
+            key: key.clone(),
+            value,
+        };
+        let offset = self.write_buffer.seek(SeekFrom::End(0))?;
         serde_json::to_writer(&mut self.write_buffer, &cmd)?;
         self.write_buffer.flush()?;
+        let len = self.write_buffer.seek(SeekFrom::End(0))? - offset;
+        self.log_pointer_index.insert(key, LogPointer { offset, len });
         Ok(())
     }
 
     /// Remove a given key.
     pub fn remove(&mut self, key: String) -> Result<()> {
-        self.load_data()?;
         if self.log_pointer_index.contains_key(&key) {
-            let cmd = Command::Remove { key };
+            let cmd = Command::Remove { key: key.clone() };
             serde_json::to_writer(&mut self.write_buffer, &cmd).unwrap();
             self.write_buffer.flush()?;
+            self.log_pointer_index.remove(&key);
             Ok(())
         } else {
             Err(KvError::KeyNotFound)
