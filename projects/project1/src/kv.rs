@@ -150,7 +150,6 @@ impl KvStore {
 
     fn compact(&mut self) -> Result<()> {
         let new_log_file_id = self.log_file_id + 1;
-        println!("new_log_file_id:{}", new_log_file_id);
         let compact_file = OpenOptions::new()
             .create(true)
             .write(true)
@@ -167,7 +166,7 @@ impl KvStore {
             prev_offset = cur_offset;
         }
         compact_writer.flush()?;
-        self.log_file_size = 0;
+        self.log_file_size = prev_offset;
         fs::remove_file(log_path(&self.path, self.log_file_id))?;
         self.log_file_id = new_log_file_id;
         self.read_buffer =
