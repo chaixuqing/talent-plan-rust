@@ -16,6 +16,9 @@ pub enum KvError{
 
     #[fail(display="the command is unknown")]
     UnKnownCommandType,
+
+    #[fail(display="the engine type is unknown")]
+    UnKnownEngineType,
 }
 
 impl From<io::Error> for KvError{
