@@ -1,6 +1,7 @@
-use kvs::{KvError, KvStore, Result};
-use std::{env::current_dir, net::SocketAddr};
+use kvs::{KvError, Result,KvsClient};
+use std::{ net::SocketAddr};
 use structopt::StructOpt;
+
 
 #[derive(Debug, StructOpt)]
 pub struct Set {
@@ -45,16 +46,16 @@ pub struct ApplicationArguments {
 
 fn main() -> Result<()> {
     let args = ApplicationArguments::from_args();
-    // println!("{:?}", args);
-    let mut store = KvStore::open(current_dir().unwrap()).unwrap();
+    let mut client = KvsClient::new(args.addr)?;
+
     match args.command {
         Command::Set(command) => {
             let (key, value) = (command.key, command.value);
-            store.set(key.to_owned(), value.to_owned()).unwrap();
+            return client.set(key, value)
         }
         Command::Get(command) => {
             let key = command.key;
-            match store.get(key.to_owned())? {
+            match client.get(key.to_owned())? {
                 Some(value) => println!("{}", value),
                 None => println!("Key not found"),
             }
@@ -62,7 +63,7 @@ fn main() -> Result<()> {
         Command::Rm(command) => {
             let key = command.key;
             if key.len() != 0 {
-                return match store.remove(key.to_owned()) {
+                return match client.remove(key.to_owned()) {
                     Ok(()) => Ok(()),
                     Err(KvError::KeyNotFound) => {
                         println!("{}", KvError::KeyNotFound);

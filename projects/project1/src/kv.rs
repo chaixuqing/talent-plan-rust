@@ -2,7 +2,7 @@
 //! A simple key/value store.
 
 use super::error::Result;
-use crate::KvError;
+use crate::{KvError, KvsEngine};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
@@ -36,6 +36,65 @@ enum Command {
 struct LogPointer {
     offset: u64,
     len: u64,
+}
+
+impl KvsEngine for KvStore {
+    /// Gets the string value of a given string key.
+    ///
+    /// Returns `None` if the given key does not exist.
+    fn get(&mut self, key: String) -> Result<Option<String>> {
+        match self.log_pointer_index.get(&key) {
+            Some(log_pointer) => {
+                self.read_buffer.seek(SeekFrom::Start(log_pointer.offset))?;
+                let command_reader = (&mut self.read_buffer).take(log_pointer.len);
+                if let Command::Set { value, .. } = serde_json::from_reader(command_reader)? {
+                    Ok(Some(value))
+                } else {
+                    Err(KvError::UnKnownCommandType)
+                }
+            }
+            None => Ok(None),
+        }
+    }
+    /// Sets the value of a string key to a string.
+    ///
+    /// If the key already exists, the previous value will be overwritten.
+    fn set(&mut self, key: String, value: String) -> Result<()> {
+        let cmd = Command::Set {
+            key: key.clone(),
+            value,
+        };
+        let offset = self.write_buffer.seek(SeekFrom::End(0))?;
+        serde_json::to_writer(&mut self.write_buffer, &cmd)?;
+        self.write_buffer.flush()?;
+        let len = self.write_buffer.seek(SeekFrom::End(0))? - offset;
+        self.log_file_size += len;
+        self.log_pointer_index
+            .insert(key, LogPointer { offset, len });
+        if self.log_file_size > COMPACT_THRESHOLD {
+            self.compact()?;
+        }
+        Ok(())
+    }
+
+    /// Remove a given key.
+    fn remove(&mut self, key: String) -> Result<()> {
+        if self.log_pointer_index.contains_key(&key) {
+            let cmd = Command::Remove { key: key.clone() };
+            let offset = self.write_buffer.seek(SeekFrom::End(0))?;
+            serde_json::to_writer(&mut self.write_buffer, &cmd).unwrap();
+            self.write_buffer.flush()?;
+            let len = self.write_buffer.seek(SeekFrom::End(0))? - offset;
+            self.log_file_size += len;
+            self.log_pointer_index.remove(&key);
+            if self.log_file_size > COMPACT_THRESHOLD {
+                self.compact()?;
+            }
+            Ok(())
+        } else {
+            Err(KvError::KeyNotFound)
+        }
+    }
 }
 
 impl KvStore {
@@ -90,62 +149,6 @@ impl KvStore {
             self.compact()?;
         }
         Ok(())
-    }
-    /// Gets the string value of a given string key.
-    ///
-    /// Returns `None` if the given key does not exist.
-    pub fn get(&mut self, key: String) -> Result<Option<String>> {
-        match self.log_pointer_index.get(&key) {
-            Some(log_pointer) => {
-                self.read_buffer.seek(SeekFrom::Start(log_pointer.offset))?;
-                let command_reader = (&mut self.read_buffer).take(log_pointer.len);
-                if let Command::Set { value, .. } = serde_json::from_reader(command_reader)? {
-                    Ok(Some(value))
-                } else {
-                    Err(KvError::UnKnownCommandType)
-                }
-            }
-            None => Ok(None),
-        }
-    }
-    /// Sets the value of a string key to a string.
-    ///
-    /// If the key already exists, the previous value will be overwritten.
-    pub fn set(&mut self, key: String, value: String) -> Result<()> {
-        let cmd = Command::Set {
-            key: key.clone(),
-            value,
-        };
-        let offset = self.write_buffer.seek(SeekFrom::End(0))?;
-        serde_json::to_writer(&mut self.write_buffer, &cmd)?;
-        self.write_buffer.flush()?;
-        let len = self.write_buffer.seek(SeekFrom::End(0))? - offset;
-        self.log_file_size += len;
-        self.log_pointer_index
-            .insert(key, LogPointer { offset, len });
-        if self.log_file_size > COMPACT_THRESHOLD {
-            self.compact()?;
-        }
-        Ok(())
-    }
-
-    /// Remove a given key.
-    pub fn remove(&mut self, key: String) -> Result<()> {
-        if self.log_pointer_index.contains_key(&key) {
-            let cmd = Command::Remove { key: key.clone() };
-            let offset = self.write_buffer.seek(SeekFrom::End(0))?;
-            serde_json::to_writer(&mut self.write_buffer, &cmd).unwrap();
-            self.write_buffer.flush()?;
-            let len = self.write_buffer.seek(SeekFrom::End(0))? - offset;
-            self.log_file_size += len;
-            self.log_pointer_index.remove(&key);
-            if self.log_file_size > COMPACT_THRESHOLD {
-                self.compact()?;
-            }
-            Ok(())
-        } else {
-            Err(KvError::KeyNotFound)
-        }
     }
 
     fn compact(&mut self) -> Result<()> {

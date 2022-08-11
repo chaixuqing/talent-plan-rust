@@ -1,10 +1,10 @@
 use clap::arg_enum;
-use kvs::{KvError, Result};
+use kvs::{KvError, Result, KvStore, KvsServer};
 use log::{info, LevelFilter};
 use std::{env::current_dir, fs, net::SocketAddr,io::Write};
 use structopt::StructOpt;
 
-const DEFAULT_IP_ADDR: &str = " ";
+const DEFAULT_IP_ADDR: &str = "127.0.0.1:4000";
 const ENGINE_CONFIGURE_FILE_NAME: &str = "engineConfigure.txt";
 
 arg_enum! {
@@ -27,24 +27,30 @@ struct Opt {
     addr: SocketAddr,
 
     #[structopt(long,value_name = "ENGINE-NAME",possible_values = &EngineType::variants(),case_insensitive = true, parse(try_from_str))]
-    engine: Option<EngineType>,
+    engine: Option<EngineType>
 }
 
 fn get_prev_engine() -> Result<Option<EngineType>> {
     let path = current_dir().unwrap().join(ENGINE_CONFIGURE_FILE_NAME);
     if !path.exists() {
+        info!("path is not exist.");
         return Ok(None);
     }
     match &fs::read_to_string(path)?[..] {
         "kvs" => Ok(Some(EngineType::kvs)),
         "sled" => Ok(Some(EngineType::sled)),
-        _ => Err(KvError::UnKnownEngineType),
+        _ => {
+            info!("{} has some error context",ENGINE_CONFIGURE_FILE_NAME);
+            Err(KvError::UnKnownEngineType)
+        },
     }
 }
 
 fn get_engine(engine: Option<EngineType>) -> Result<EngineType> {
+    info!("call get_engine.");
     let prev_engine = get_prev_engine()?;
     if engine == None {
+        info!("engine is None.");
         if prev_engine == None {
             return Ok(EngineType::kvs);
         } else {
@@ -54,7 +60,6 @@ fn get_engine(engine: Option<EngineType>) -> Result<EngineType> {
         if prev_engine == None || prev_engine == engine {
             return Ok(engine.unwrap());
         } else {
-            println!("here");
             return Err(KvError::UnKnownEngineType);
         }
     }
@@ -73,7 +78,7 @@ fn main() {
     println!("args:{:?},engine:{:?}", opt.addr, opt.engine);
     let mut builder = env_logger::Builder::new();
 
-    builder.format(|buf, record| writeln!(buf, "{}: {}", record.level(), record.args()));
+    // builder.format(|buf, record| writeln!(buf, "{}: {}", record.level(), record.args()));
 
     builder.filter_level(LevelFilter::Debug)
         .init();
@@ -82,4 +87,13 @@ fn main() {
     info!("Version: {}", env!("CARGO_PKG_VERSION"));
     info!("Storage Engine: {:?}", engine);
     info!("Socket Address: {}", opt.addr);
+
+    let engine = match engine {
+        EngineType::kvs => KvStore::open(current_dir().unwrap()).unwrap(),
+        EngineType::sled => {
+            unimplemented!("Sled");
+        }
+    };
+    let mut server = KvsServer::new(opt.addr, engine);
+    server.start().unwrap();
 }
