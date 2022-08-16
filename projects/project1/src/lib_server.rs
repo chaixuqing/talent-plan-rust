@@ -2,7 +2,7 @@ use crate::{
     lib_rpc::{Request, Response},
     KvsEngine, Result,
 };
-use log::{warn, info};
+use log::{info, warn};
 use std::net;
 
 pub struct KvsServer<T: KvsEngine> {
@@ -21,7 +21,10 @@ impl<T: KvsEngine> KvsServer<T> {
         for stream in listener.incoming() {
             match stream {
                 Ok(mut stream) => {
-                    info!("get a connection from {}",stream.peer_addr().unwrap().to_string());
+                    info!(
+                        "get a connection from {}",
+                        stream.peer_addr().unwrap().to_string()
+                    );
                     let request = bincode::deserialize_from(&mut stream)?;
                     match request {
                         Request::Get { key } => {

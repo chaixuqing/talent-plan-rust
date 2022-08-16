@@ -1,7 +1,7 @@
 use clap::arg_enum;
-use kvs::{KvError, Result, KvStore, KvsServer};
-use log::{info, LevelFilter};
-use std::{env::current_dir, fs, net::SocketAddr,io::Write};
+use kvs::{KvError, KvStore, KvsEngine, KvsServer, Result, SledKvsEngine};
+use log::{info, LevelFilter,error};
+use std::{env::current_dir, fs, net::SocketAddr};
 use structopt::StructOpt;
 
 const DEFAULT_IP_ADDR: &str = "127.0.0.1:4000";
@@ -10,8 +10,8 @@ const ENGINE_CONFIGURE_FILE_NAME: &str = "engineConfigure.txt";
 arg_enum! {
     #[derive(Debug,PartialEq)]
     enum EngineType {
-        kvs,
-        sled
+        Kvs,
+        Sled
     }
 }
 
@@ -27,7 +27,7 @@ struct Opt {
     addr: SocketAddr,
 
     #[structopt(long,value_name = "ENGINE-NAME",possible_values = &EngineType::variants(),case_insensitive = true, parse(try_from_str))]
-    engine: Option<EngineType>
+    engine: Option<EngineType>,
 }
 
 fn get_prev_engine() -> Result<Option<EngineType>> {
@@ -37,12 +37,12 @@ fn get_prev_engine() -> Result<Option<EngineType>> {
         return Ok(None);
     }
     match &fs::read_to_string(path)?[..] {
-        "kvs" => Ok(Some(EngineType::kvs)),
-        "sled" => Ok(Some(EngineType::sled)),
+        "Kvs" => Ok(Some(EngineType::Kvs)),
+        "Sled" => Ok(Some(EngineType::Sled)),
         _ => {
-            info!("{} has some error context",ENGINE_CONFIGURE_FILE_NAME);
+            info!("{} has some error context", ENGINE_CONFIGURE_FILE_NAME);
             Err(KvError::UnKnownEngineType)
-        },
+        }
     }
 }
 
@@ -52,7 +52,7 @@ fn get_engine(engine: Option<EngineType>) -> Result<EngineType> {
     if engine == None {
         info!("engine is None.");
         if prev_engine == None {
-            return Ok(EngineType::kvs);
+            return Ok(EngineType::Kvs);
         } else {
             return Ok(prev_engine.unwrap());
         }
@@ -60,6 +60,7 @@ fn get_engine(engine: Option<EngineType>) -> Result<EngineType> {
         if prev_engine == None || prev_engine == engine {
             return Ok(engine.unwrap());
         } else {
+            error!("prev engine isn't match to the engine in args.");
             return Err(KvError::UnKnownEngineType);
         }
     }
@@ -80,20 +81,29 @@ fn main() {
 
     // builder.format(|buf, record| writeln!(buf, "{}: {}", record.level(), record.args()));
 
-    builder.filter_level(LevelFilter::Debug)
-        .init();
+    builder.filter_level(LevelFilter::Info).init();
     let engine = get_engine(opt.engine).unwrap();
     init_engine_configure(&engine);
     info!("Version: {}", env!("CARGO_PKG_VERSION"));
     info!("Storage Engine: {:?}", engine);
     info!("Socket Address: {}", opt.addr);
 
-    let engine = match engine {
-        EngineType::kvs => KvStore::open(current_dir().unwrap()).unwrap(),
-        EngineType::sled => {
-            unimplemented!("Sled");
+    match engine {
+        EngineType::Kvs => {
+            info!("start kvStore engine.");
+            start_engine(opt.addr, KvStore::open(current_dir().unwrap()).unwrap());
+        }
+        EngineType::Sled => {
+            info!("start sled engine.");
+            start_engine(
+                opt.addr,
+                SledKvsEngine::new(current_dir().unwrap().as_path()),
+            );
         }
     };
-    let mut server = KvsServer::new(opt.addr, engine);
-    server.start().unwrap();
+}
+
+fn start_engine(addr: SocketAddr, kv_engine: impl KvsEngine) {
+    let mut server = KvsServer::new(addr, kv_engine);
+    server.start().unwrap()
 }

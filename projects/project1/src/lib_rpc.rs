@@ -28,7 +28,7 @@ impl From<Response> for Result<Option<String>> {
 impl From<Response> for Result<()> {
     fn from(res: Response) -> Self {
         match res {
-            Response::Ok(_msg) => Ok(()),
+            Response::Ok(_) => Ok(()),
             Response::NetworkError(e) => Err(KvError::RemoteNetworkError(e)),
             Response::StorageError(e) => Err(KvError::RemoteStoreError(e)),
         }

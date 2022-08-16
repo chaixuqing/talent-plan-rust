@@ -14,7 +14,8 @@ impl KvsClient {
 
     pub fn get(&mut self, key: String) -> Result<Option<String>> {
         let request = Request::Get { key };
-        Result::from(self.get_response(request))
+        let res = Result::from(self.get_response(request));
+        res
     }
 
     pub fn set(&mut self, key: String, value: String) -> Result<()> {

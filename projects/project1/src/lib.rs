@@ -11,3 +11,4 @@ pub use error::{Result,KvError};
 pub use kvs_engine::KvsEngine;
 pub use lib_client::KvsClient;
 pub use lib_server::KvsServer;
+pub use sled_kvs_engine::SledKvsEngine;
