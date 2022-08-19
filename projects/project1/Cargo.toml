@@ -23,3 +23,7 @@ log = { version = "0.4"}
 env_logger = "0.8.4"
 bincode = "1.2.1"
 sled = "0.34.7"
+
+[[bench]]
+name = "benches"
+harness = false
