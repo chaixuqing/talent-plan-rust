@@ -8,10 +8,12 @@ edition = "2018"
 [dev-dependencies]
 assert_cmd = "0.11"
 criterion = "0.3"
+crossbeam-utils = "0.6.5"
 predicates = "1.0.0"
 rand = "0.6.5"
 tempfile = "3.0.7"
 walkdir = "2.2.7"
+panic-control = "0.1.4"
 
 [dependencies]
 clap = "2.33.0"
@@ -23,6 +25,9 @@ log = { version = "0.4"}
 env_logger = "0.8.4"
 bincode = "1.2.1"
 sled = "0.34.7"
+crossbeam-channel = "0.5"
+defer = "0.1.0"
+num_cpus = "1.0"
 
 [[bench]]
 name = "benches"

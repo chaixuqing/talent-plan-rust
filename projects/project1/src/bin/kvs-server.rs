@@ -1,6 +1,6 @@
 use clap::arg_enum;
-use kvs::{KvError, KvStore, KvsEngine, KvsServer, Result, SledKvsEngine};
-use log::{info, LevelFilter,error};
+use kvs::{ArcKvStore, KvError, KvsEngine, KvsServer, Result, SledKvsEngine};
+use log::{error, info, LevelFilter};
 use std::{env::current_dir, fs, net::SocketAddr};
 use structopt::StructOpt;
 
@@ -91,7 +91,7 @@ fn main() {
     match engine {
         EngineType::Kvs => {
             info!("start kvStore engine.");
-            start_engine(opt.addr, KvStore::open(current_dir().unwrap()).unwrap());
+            start_engine(opt.addr, ArcKvStore::new(current_dir().unwrap()));
         }
         EngineType::Sled => {
             info!("start sled engine.");

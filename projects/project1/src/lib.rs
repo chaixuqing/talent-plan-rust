@@ -1,14 +1,15 @@
-mod kv;
+mod engine;
 mod error;
-mod kvs_engine;
-mod sled_kvs_engine;
 mod lib_client;
 mod lib_server;
 mod lib_rpc;
+pub mod thread_pool;
 
-pub use kv::KvStore;
+pub use engine::kv::KvStore;
 pub use error::{Result,KvError};
-pub use kvs_engine::KvsEngine;
+pub use engine::kvs_engine::KvsEngine;
 pub use lib_client::KvsClient;
 pub use lib_server::KvsServer;
-pub use sled_kvs_engine::SledKvsEngine;
+pub use engine::sled_kvs_engine::SledKvsEngine;
+pub use engine::ArcKvStore;
+pub use thread_pool::{NaiveThreadPool,ThreadPool};

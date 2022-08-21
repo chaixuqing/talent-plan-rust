@@ -1,8 +1,8 @@
 #![deny(missing_docs)]
 //! A simple key/value store.
 
-use super::error::Result;
-use crate::{KvError, KvsEngine};
+use crate::error::Result;
+use crate::KvError;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
@@ -38,11 +38,11 @@ struct LogPointer {
     len: u64,
 }
 
-impl KvsEngine for KvStore {
+impl KvStore {
     /// Gets the string value of a given string key.
     ///
     /// Returns `None` if the given key does not exist.
-    fn get(&mut self, key: String) -> Result<Option<String>> {
+    pub fn get(&mut self, key: String) -> Result<Option<String>> {
         match self.log_pointer_index.get(&key) {
             Some(log_pointer) => {
                 self.read_buffer.seek(SeekFrom::Start(log_pointer.offset))?;
@@ -59,7 +59,7 @@ impl KvsEngine for KvStore {
     /// Sets the value of a string key to a string.
     ///
     /// If the key already exists, the previous value will be overwritten.
-    fn set(&mut self, key: String, value: String) -> Result<()> {
+    pub fn set(&mut self, key: String, value: String) -> Result<()> {
         let cmd = Command::Set {
             key: key.clone(),
             value,
@@ -78,7 +78,7 @@ impl KvsEngine for KvStore {
     }
 
     /// Remove a given key.
-    fn remove(&mut self, key: String) -> Result<()> {
+    pub fn remove(&mut self, key: String) -> Result<()> {
         if self.log_pointer_index.contains_key(&key) {
             let cmd = Command::Remove { key: key.clone() };
             let offset = self.write_buffer.seek(SeekFrom::End(0))?;
