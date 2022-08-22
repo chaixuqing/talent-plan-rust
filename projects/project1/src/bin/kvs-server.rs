@@ -91,7 +91,7 @@ fn main() {
     match engine {
         EngineType::Kvs => {
             info!("start kvStore engine.");
-            start_engine(opt.addr, ArcKvStore::new(current_dir().unwrap()));
+            start_engine(opt.addr, ArcKvStore::open(current_dir().unwrap()).unwrap());
         }
         EngineType::Sled => {
             info!("start sled engine.");

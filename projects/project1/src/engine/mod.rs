@@ -3,7 +3,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use crate::{KvStore, KvsEngine};
+use crate::{KvStore, KvsEngine,Result};
 
 pub mod kv;
 pub mod kvs_engine;
@@ -15,10 +15,10 @@ pub struct ArcKvStore {
 }
 
 impl ArcKvStore {
-    pub fn new(path: impl Into<PathBuf>) -> ArcKvStore {
-        ArcKvStore {
+    pub fn open(path: impl Into<PathBuf>) -> Result<ArcKvStore>  {
+        Ok(ArcKvStore {
             kv_store: Arc::new(Mutex::new(KvStore::open(path).unwrap())),
-        }
+        })
     }
 }
 
