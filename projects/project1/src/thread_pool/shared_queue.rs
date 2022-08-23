@@ -70,6 +70,7 @@ impl ThreadPool for SharedQueueThreadPool {
 
 impl Drop for SharedQueueThreadPool {
     fn drop(&mut self) {
+        println!("dropped SharedQueueThreadPool");
         self.monitor_sx.send(ControlMessage::Stop).unwrap();
         for _ in 0..self.size {
             self.thread_pool_sx
@@ -102,6 +103,7 @@ impl Monitor {
     pub fn watch(&mut self) {
         loop {
             if let Ok(id) = self.prx.try_recv() {
+                println!("create a new thread.");
                 self.threads[id] = Worker::new(id, self.thread_pool_rx.clone(), self.psx.clone());
             }
             if let Ok(ControlMessage::Stop) = self.monitor_rx.try_recv() {
@@ -112,15 +114,19 @@ impl Monitor {
     }
 }
 
+impl Drop for Monitor{
+    fn drop(&mut self) {
+        println!("dropped Monitor.");
+    }
+}
+
 impl Worker {
     pub fn new(id: usize, rx: Receiver<ThreadPoolMessage>, psx: Sender<usize>) -> Worker {
         let handle = thread::spawn(move || {
-            defer(|| {
-                psx.send(id).unwrap();
-            });
             while let Ok(ThreadPoolMessage::RunJob(job)) = rx.recv() {
                 job()
             }
+            psx.send(id);
         });
         Worker { id, handle }
     }

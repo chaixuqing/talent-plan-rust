@@ -1,11 +1,12 @@
 use clap::arg_enum;
-use kvs::{ArcKvStore, KvError, KvsEngine, KvsServer, Result, SledKvsEngine};
+use kvs::{ArcKvStore, KvError, KvsEngine, KvsServer, Result, SledKvsEngine, RayonThreadPool, ThreadPool};
 use log::{error, info, LevelFilter};
 use std::{env::current_dir, fs, net::SocketAddr};
 use structopt::StructOpt;
 
 const DEFAULT_IP_ADDR: &str = "127.0.0.1:4000";
 const ENGINE_CONFIGURE_FILE_NAME: &str = "engineConfigure.txt";
+const DEFAULT_THREAD_NUMBER:u32 = 8;
 
 arg_enum! {
     #[derive(Debug,PartialEq)]
@@ -104,6 +105,7 @@ fn main() {
 }
 
 fn start_engine(addr: SocketAddr, kv_engine: impl KvsEngine) {
-    let mut server = KvsServer::new(addr, kv_engine);
+    let rayon_tp =RayonThreadPool::new(DEFAULT_THREAD_NUMBER).unwrap();
+    let mut server = KvsServer::new(addr, kv_engine,rayon_tp);
     server.start().unwrap()
 }
