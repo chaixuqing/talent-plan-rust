@@ -3,9 +3,7 @@ use std::{net::SocketAddr, str::FromStr, thread, time::Duration};
 use assert_cmd::assert;
 use criterion::*;
 use crossbeam_utils::sync::WaitGroup;
-use kvs::{
-    thread_pool::SharedQueueThreadPool, ArcKvStore, KvsClient, KvsServer, SledKvsEngine, ThreadPool,
-};
+use kvs::{thread_pool::SharedQueueThreadPool, ArcKvStore, KvsClient, KvsServer, ThreadPool};
 use num_cpus;
 use tempfile::tempdir;
 
@@ -44,7 +42,6 @@ fn read_queue_kvstore(c: &mut Criterion) {
             b.iter(|| {
                 let wg = WaitGroup::new();
                 let keys = keys.clone();
-                let addr = addr.clone();
                 for key in keys {
                     let wg = wg.clone();
                     let value = value.clone();
@@ -89,14 +86,13 @@ fn write_queue_kvstore(c: &mut Criterion) {
             b.iter(|| {
                 let wg = WaitGroup::new();
                 let keys = keys.clone();
-                let addr = addr.clone();
                 for key in keys {
                     let wg = wg.clone();
                     let value = value.clone();
                     client_thread_pool.spawn(move || {
                         KvsClient::new(addr)
                             .unwrap()
-                            .set(key.clone(), value.clone())
+                            .set(key.clone(), value)
                             .unwrap();
                     });
                     drop(wg);

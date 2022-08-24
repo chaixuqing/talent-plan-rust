@@ -71,7 +71,7 @@ fn main() -> Result<()> {
         Command::Get(command) => {
             let key = command.key;
             let mut client = KvsClient::new(command.addr)?;
-            match client.get(key.to_owned())? {
+            match client.get(key)? {
                 Some(value) => println!("{}", value),
                 None => println!("Key not found"),
             }
@@ -79,8 +79,8 @@ fn main() -> Result<()> {
         Command::Rm(command) => {
             let key = command.key;
             let mut client = KvsClient::new(command.addr)?;
-            if key.len() != 0 {
-                return match client.remove(key.to_owned()) {
+            if !key.is_empty() {
+                return match client.remove(key) {
                     Ok(()) => Ok(()),
                     Err(KvError::KeyNotFound) => {
                         println!("{}", KvError::KeyNotFound);
@@ -94,5 +94,5 @@ fn main() -> Result<()> {
             }
         }
     }
-    return Ok(());
+    Ok(())
 }

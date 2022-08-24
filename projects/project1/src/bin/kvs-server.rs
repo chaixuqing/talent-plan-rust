@@ -53,17 +53,15 @@ fn get_engine(engine: Option<EngineType>) -> Result<EngineType> {
     if engine == None {
         info!("engine is None.");
         if prev_engine == None {
-            return Ok(EngineType::Kvs);
+            Ok(EngineType::Kvs)
         } else {
-            return Ok(prev_engine.unwrap());
+            Ok(prev_engine.unwrap())
         }
+    } else if prev_engine == None || prev_engine == engine {
+        Ok(engine.unwrap())
     } else {
-        if prev_engine == None || prev_engine == engine {
-            return Ok(engine.unwrap());
-        } else {
-            error!("prev engine isn't match to the engine in args.");
-            return Err(KvError::UnKnownEngineType);
-        }
+        error!("prev engine isn't match to the engine in args.");
+        Err(KvError::UnKnownEngineType)
     }
 }
 

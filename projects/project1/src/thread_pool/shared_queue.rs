@@ -41,7 +41,7 @@ pub struct Worker {
 impl ThreadPool for SharedQueueThreadPool {
     fn new(threads: u32) -> Result<SharedQueueThreadPool> {
         let mut size = threads as usize;
-        if size <= 0 {
+        if size == 0 {
             size = num_cpus::get();
         }
         let (thread_pool_sx, thread_pool_rx) = unbounded();

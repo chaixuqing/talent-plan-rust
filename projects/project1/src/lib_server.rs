@@ -41,7 +41,7 @@ impl<T: KvsEngine, TP: ThreadPool> KvsServer<T, TP> {
                         match request {
                             Request::Get { key } => {
                                 let result = match engine_clone.get(key) {
-                                    Ok(opt) => Response::Ok(opt.to_owned()),
+                                    Ok(opt) => Response::Ok(opt),
                                     Err(e) => Response::StorageError(e.to_string()),
                                 };
                                 bincode::serialize_into(&mut stream, &result).unwrap();

@@ -196,8 +196,8 @@ fn get_logfile(path: impl Into<PathBuf>) -> Result<u64> {
         })
         .flatten()
         .collect();
-    file_ids.sort();
-    if file_ids.len() == 0 {
+    file_ids.sort_unstable();
+    if file_ids.is_empty() {
         // can't found any log file
         fs::File::create(log_path(&path, 0))?;
         return Ok(0);
